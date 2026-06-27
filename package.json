@@ -1,0 +1,18 @@
+{
+  "name": "dpdpa-compliance-tool",
+  "version": "1.0.0",
+  "description": "DPDPA Compliance Assessment Tool - questionnaire that emails a tailored compliance roadmap PDF.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "nodemailer": "^6.9.14"
+  }
+}
