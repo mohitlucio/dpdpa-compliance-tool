@@ -24,6 +24,66 @@ function makeTransporter() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
+    // Fail fast instead of hanging if the SMTP port is blocked (e.g. on hosts
+    // that block outbound SMTP). The browser then gets a clear error.
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 15000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Send the email. Two transports:
+//  - Brevo HTTPS API  (used when BREVO_API_KEY is set — works on hosts that
+//    block SMTP ports, e.g. Render's free tier)
+//  - SMTP via Nodemailer (used otherwise, e.g. local dev with Gmail)
+// Both attach the roadmap PDF and send from FROM_EMAIL / FROM_NAME.
+// ---------------------------------------------------------------------------
+async function sendEmail({ to, subject, text, html }) {
+  const fromName = process.env.FROM_NAME || 'Trilegal';
+  const fromEmail = process.env.FROM_EMAIL || process.env.SMTP_USER;
+  const bcc = process.env.BCC_EMAIL || '';
+
+  if (process.env.BREVO_API_KEY) {
+    const pdfBase64 = fs.readFileSync(PDF_PATH).toString('base64');
+    const body = {
+      sender: { email: fromEmail, name: fromName },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+      attachment: [{ content: pdfBase64, name: 'DPDPA-Compliance-Roadmap.pdf' }],
+    };
+    if (bcc) body.bcc = [{ email: bcc }];
+
+    const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!resp.ok) {
+      const detail = await resp.text();
+      throw new Error(`Brevo API ${resp.status}: ${detail}`);
+    }
+    return;
+  }
+
+  // Fallback: direct SMTP (e.g. local development)
+  const transporter = makeTransporter();
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromEmail}>`,
+    to,
+    bcc: bcc || undefined,
+    subject,
+    text,
+    html,
+    attachments: [
+      { filename: 'DPDPA-Compliance-Roadmap.pdf', path: PDF_PATH, contentType: 'application/pdf' },
+    ],
   });
 }
 
@@ -142,23 +202,7 @@ app.post('/api/submit', async (req, res) => {
     const profile = buildProfile(answers);
     const { subject, text, html } = buildEmail(profile);
 
-    const transporter = makeTransporter();
-
-    await transporter.sendMail({
-      from: `"${process.env.FROM_NAME || 'Trilegal'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
-      to: email,
-      bcc: process.env.BCC_EMAIL || undefined,
-      subject,
-      text,
-      html,
-      attachments: [
-        {
-          filename: 'DPDPA-Compliance-Roadmap.pdf',
-          path: PDF_PATH,
-          contentType: 'application/pdf',
-        },
-      ],
-    });
+    await sendEmail({ to: email, subject, text, html });
 
     // Lightweight audit log of submissions (no PII beyond what was submitted)
     fs.appendFileSync(

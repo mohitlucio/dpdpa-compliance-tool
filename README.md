@@ -112,9 +112,14 @@ npm start                   # open http://localhost:3000
 | `FROM_NAME`   | display name recipients see (e.g. `Trilegal`)            |
 | `FROM_EMAIL`  | the “from” address (same as `SMTP_USER` for Gmail)       |
 | `BCC_EMAIL`   | optional — receive a copy of every submission            |
+| `BREVO_API_KEY` | optional — if set, sends via [Brevo](https://www.brevo.com)'s HTTPS API instead of SMTP (needed on hosts that block SMTP, e.g. Render free) |
 
 > **Gmail App Password:** enable 2-Step Verification, then create one at
 > <https://myaccount.google.com/apppasswords>.
+>
+> **Sending on Render (free tier):** Render blocks outbound SMTP ports, so Gmail SMTP won't
+> work there. Set `BREVO_API_KEY` instead — the app then sends over Brevo's HTTPS API, still
+> from `FROM_EMAIL` with the PDF attached. Verify `FROM_EMAIL` as a sender in Brevo first.
 
 ## ☁️ Deployment (Render)
 

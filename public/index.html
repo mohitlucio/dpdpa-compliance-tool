@@ -364,11 +364,23 @@
     document.getElementById('done').classList.add('show');
 
     try {
-      const res = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      let res;
+      try {
+        res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          signal: ctrl.signal,
+        });
+      } catch (e) {
+        throw new Error(e.name === 'AbortError'
+          ? 'The request timed out. Please try again.'
+          : 'Network error. Please try again.');
+      } finally {
+        clearTimeout(timer);
+      }
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || 'Submission failed.');
       document.getElementById('sending').style.display = 'none';
