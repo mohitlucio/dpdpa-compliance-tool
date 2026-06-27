@@ -1,74 +1,147 @@
-# DPDPA Compliance Assessment Tool
+<h1 align="center">DPDPA Compliance Assessment Tool</h1>
 
-A web tool modelled on Trilegal's DPDPA Compliance Assessment Tool. A visitor reads a
-short intro, answers a 5-page questionnaire, enters their email, and is **automatically
-emailed** a DPDPA Compliance Roadmap (with a Trilegal-branded cover note).
+<p align="center">
+  A web tool that lets an organisation answer a few short questions and instantly receive a
+  personalised <b>DPDPA (Digital Personal Data Protection Act, 2023) compliance roadmap</b> PDF by email.
+  <br/>
+  Modelled on Trilegal's DPDPA Compliance Assessment Tool.
+</p>
 
-**Live site (GitHub Pages):** https://mohitlucio.github.io/dpdpa-compliance-tool/
+<p align="center">
+  🔗 <b>Live app:</b> <a href="https://dpdpa-compliance-tool.onrender.com">https://dpdpa-compliance-tool.onrender.com</a>
+</p>
 
 ---
 
-## 1. What it does
-1. Landing page → "Take the Assessment".
-2. 5 questions (Q1 in-scope? · Q2 fiduciary/processor · Q3 customers/employees · Q4 extra
-   considerations · Q5 email).
-3. On submit, the email entered receives a tailored summary + a link to the roadmap PDF.
+## ✨ Overview
 
-## 2. Two ways it can run
+The DPDPA, 2023 changes how organisations in India collect, use, store and manage personal
+data. For many businesses the hardest question is simply *where to begin*.
 
-### A) Static site on GitHub Pages + EmailJS  ← this is what's hosted live
-GitHub Pages only serves static files, so the email is sent **from the browser** using
-[EmailJS](https://www.emailjs.com) (a service designed for static sites; its public key is
-safe to expose). The roadmap PDF is hosted on the Pages site and the email links to it.
+This tool answers that. A visitor:
 
-- Frontend: `public/index.html` (HTML + CSS + vanilla JS).
-- Email: `emailjs.send(...)` configured by `public/config.js`.
-- Deploy: GitHub Actions workflow `.github/workflows/deploy-pages.yml` publishes `public/`.
+1. Lands on an intro page and clicks **“Take the Assessment”**.
+2. Answers a **5-step questionnaire** (3–5 short questions).
+3. Enters their email and hits **Submit**.
+4. **Automatically receives an email** with a tailored summary of their obligations and the
+   **DPDPA Compliance Roadmap PDF attached**.
 
-**Setup (one time):**
-1. Create a free account at https://dashboard.emailjs.com
-2. **Email Services** → add **Gmail** → connect your Gmail account.
-3. **Email Templates** → create a template (see variables below). Set its **To Email** to
-   `{{to_email}}`.
-4. Copy your **Service ID**, **Template ID**, and **Public Key** into `public/config.js`.
-5. Commit & push — GitHub Actions redeploys automatically.
+It’s useful for organisations at any stage of their compliance journey, or as a practical
+starting point for internal discussions.
 
-Template variables passed by the app: `{{to_email}}`, `{{summary_role}}`,
-`{{summary_data_type}}`, `{{summary_considerations}}`, `{{pdf_link}}`.
+## 🖥️ Features
 
-### B) Self-hosted Node server (real Gmail attachment)
-`server.js` (Express + Nodemailer) sends via Gmail SMTP and attaches the PDF directly.
-Use this if you want the PDF as a true attachment rather than a link.
+- Clean, branded landing page (Trilegal logo + hero) in a Times New Roman theme.
+- 5-step questionnaire with a progress bar, Back/Next/Submit, and input validation.
+- Smart, mutually-exclusive “None of the Above” option.
+- **Automatic email delivery** with the roadmap **PDF as a real attachment**.
+- The email body is **tailored to the answers** (primary DPDPA role, data type, risk factors).
+- Every submission is logged for the operator’s records.
 
-```bash
-npm install
-cp .env.example .env     # fill in SMTP_USER, SMTP_PASS (Gmail App Password), FROM_EMAIL
-npm start                # http://localhost:3000
+## 🧠 How it works
+
+A classic two-part web app: a static frontend the visitor sees, and a small backend that
+performs the one privileged action — sending the email.
+
 ```
-Deploy this version on a Node host (e.g. Render — see `render.yaml`). Not GitHub Pages.
+┌──────────────────────────────┐     POST /api/submit      ┌───────────────────────────┐
+│ FRONTEND  (public/index.html) │ ──(answers + email)─────► │ BACKEND  (server.js)       │
+│  • landing page               │                           │  • Express web server      │
+│  • 5-step questionnaire        │ ◄──({ ok: true })──────── │  • validates the email     │
+│  • fetch() on submit          │                           │  • builds a tailored note  │
+└──────────────────────────────┘                           │  • Nodemailer → Gmail SMTP │
+                                                            └─────────────┬─────────────┘
+                                                                          │ attaches the PDF
+                                                                          ▼
+                                                                Recipient’s inbox
+```
 
-## 3. Project structure
+- **Frontend** — one self-contained HTML file (HTML + CSS + vanilla JavaScript, no framework).
+  The logo and the padlock hero are hand-built **SVGs** so they stay sharp at any size.
+- **Backend** — Node.js + **Express**. A single endpoint, `POST /api/submit`, validates the
+  email, turns the raw answers into plain English, composes the message, and sends it with
+  **Nodemailer** over Gmail SMTP, attaching `assets/DPDPA-Compliance-Roadmap.pdf`.
+- **Credentials** are never hard-coded — they’re read from environment variables, so nothing
+  secret is ever committed to this repository.
+
+## 🛠️ Tech stack
+
+| Layer    | Technology |
+|----------|------------|
+| Frontend | HTML, CSS, vanilla JavaScript, inline SVG |
+| Backend  | Node.js, Express |
+| Email    | Nodemailer over Gmail SMTP |
+| Hosting  | [Render](https://render.com) (free Node web service) |
+
+## 📁 Project structure
+
 ```
 dpdpa-tool/
-├─ public/                         # the static site (what GitHub Pages serves)
-│  ├─ index.html                   # landing page + questionnaire + EmailJS send
-│  ├─ config.js                    # EmailJS keys (public, safe)
-│  ├─ trilegal-logo.svg / hero.svg
-│  └─ DPDPA-Compliance-Roadmap.pdf # emailed roadmap (linked from the email)
-├─ server.js                       # optional Node backend (attachment version)
-├─ assets/DPDPA-Compliance-Roadmap.pdf
-├─ render.yaml                     # deploy config for the Node version
-├─ .github/workflows/deploy-pages.yml
-└─ .env / .env.example             # credentials for the Node version (git-ignored)
+├─ server.js                 # Express server + email logic
+├─ package.json
+├─ render.yaml               # Render deploy blueprint
+├─ .env.example              # template for credentials (copy to .env)
+├─ assets/
+│  └─ DPDPA-Compliance-Roadmap.pdf   # the PDF that gets emailed
+└─ public/
+   ├─ index.html             # landing page + questionnaire
+   ├─ trilegal-logo.svg
+   ├─ hero.svg
+   └─ DPDPA-Compliance-Roadmap.pdf
 ```
 
-## 4. Customising
-- **Change the roadmap:** replace `public/DPDPA-Compliance-Roadmap.pdf` (and `assets/...`).
-- **Change email wording:** edit the EmailJS template (version A) or `buildEmail()` in
-  `server.js` (version B).
-- **Sender name:** EmailJS template "From Name" (A) or `FROM_NAME` (B).
+## 🚀 Run locally
 
-## 5. Notes
-- "Trilegal" and the bundled roadmap PDF are the property of Trilegal; this is a
-  demonstration clone.
-- The roadmap is informational only and is **not legal advice**.
+```bash
+git clone https://github.com/mohitlucio/dpdpa-compliance-tool.git
+cd dpdpa-compliance-tool
+npm install
+cp .env.example .env        # then fill in your email credentials
+npm start                   # open http://localhost:3000
+```
+
+### Environment variables
+
+| Variable      | Meaning                                                  |
+|---------------|---------------------------------------------------------|
+| `SMTP_HOST`   | `smtp.gmail.com`                                         |
+| `SMTP_PORT`   | `465`                                                    |
+| `SMTP_SECURE` | `true`                                                   |
+| `SMTP_USER`   | the sending Gmail address                                |
+| `SMTP_PASS`   | a Gmail **App Password** (not your normal password)      |
+| `FROM_NAME`   | display name recipients see (e.g. `Trilegal`)            |
+| `FROM_EMAIL`  | the “from” address (same as `SMTP_USER` for Gmail)       |
+| `BCC_EMAIL`   | optional — receive a copy of every submission            |
+
+> **Gmail App Password:** enable 2-Step Verification, then create one at
+> <https://myaccount.google.com/apppasswords>.
+
+## ☁️ Deployment (Render)
+
+The live app runs on Render as a free Node web service:
+**<https://dpdpa-compliance-tool.onrender.com>**
+
+To deploy your own copy:
+
+1. On [Render](https://dashboard.render.com) → **New ▸ Web Service**.
+2. Use **Public Git Repository** and paste this repo’s URL (or connect via the
+   `render.yaml` Blueprint if it’s your own account).
+3. Settings: **Runtime** Node · **Build** `npm install` · **Start** `npm start` · **Free** plan.
+4. Add the environment variables from the table above.
+5. **Create Web Service** — Render builds and gives you a public URL.
+
+> **Note on the free tier:** the service sleeps after ~15 minutes of inactivity, so the first
+> request after idle takes ~30 seconds to wake up, then it’s fast.
+
+## 🔧 Customising
+
+- **Change the emailed PDF:** replace the file in `assets/` (and `public/`).
+- **Change the email wording:** edit `buildEmail()` in `server.js`.
+- **Different PDFs per answer combination:** extend the `/api/submit` handler in `server.js`.
+- **Sender display name:** change `FROM_NAME`.
+
+## ⚖️ Disclaimer
+
+“Trilegal” and the bundled roadmap PDF are the property of Trilegal; this is a demonstration
+project. The roadmap is for general informational purposes only and **does not constitute
+legal advice**.
