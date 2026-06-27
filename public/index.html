@@ -4,9 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Trilegal | DPDPA Compliance Assessment Tool</title>
-<!-- EmailJS: sends the email straight from the browser (works on GitHub Pages) -->
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="config.js"></script>
 <style>
   :root {
     --navy: #1b3a6b;
@@ -350,66 +347,37 @@
     });
   });
 
-  // Turn the answers into a plain-English summary (mirrors the old server logic)
-  function buildProfile() {
-    const q2 = getRadio('q2');
-    const q3 = getRadio('q3');
-    const q4 = getChecks('q4');
-
-    const role = q2 === 'behalf' ? 'Data Processor' : 'Data Fiduciary';
-    const dataType = q3 === 'customers'
-      ? 'External-facing (interface with individual customers; B2C).'
-      : 'Internal-facing (employees, contractors, vendors, visitors).';
-
-    const considerations = [];
-    if (q4.includes('children')) considerations.push('Processing of personal data of children or persons with disabilities');
-    if (q4.includes('cross_border')) considerations.push('Transfer of personal data outside India');
-    if (q4.includes('large_volume')) considerations.push('Large-volume / sensitive / higher-risk processing');
-    if (considerations.length === 0) considerations.push('No additional risk factors flagged');
-
-    return { role, dataType, considerations: considerations.join('; ') + '.' };
-  }
-
   submitBtn.addEventListener('click', async () => {
     if (!validateStep(5)) return;
 
-    const email = document.getElementById('q5').value.trim();
-    const profile = buildProfile();
+    const payload = {
+      q1: getRadio('q1'),
+      q2: getRadio('q2'),
+      q3: getRadio('q3'),
+      q4: getChecks('q4'),
+      q5: document.getElementById('q5').value.trim(),
+    };
 
     // Switch to sending screen
     document.getElementById('footer').style.display = 'none';
     steps.forEach(s => s.classList.remove('active'));
     document.getElementById('done').classList.add('show');
 
-    const cfg = window.EMAILJS_CONFIG || {};
-    const configured = cfg.publicKey && !cfg.publicKey.startsWith('YOUR_');
-
     try {
-      if (!configured) {
-        throw new Error('Email sending is not configured yet (EmailJS keys missing in config.js).');
-      }
-
-      // Absolute link to the roadmap PDF hosted alongside this page
-      const pdfLink = new URL('DPDPA-Compliance-Roadmap.pdf', window.location.href).href;
-
-      const params = {
-        to_email: email,
-        summary_role: profile.role,
-        summary_data_type: profile.dataType,
-        summary_considerations: profile.considerations,
-        pdf_link: pdfLink,
-      };
-
-      await emailjs.send(cfg.serviceId, cfg.templateId, params, { publicKey: cfg.publicKey });
-
+      const res = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || 'Submission failed.');
       document.getElementById('sending').style.display = 'none';
       document.getElementById('success').style.display = 'block';
     } catch (err) {
       document.getElementById('done').classList.remove('show');
       document.getElementById('footer').style.display = 'flex';
       steps.forEach(s => s.classList.toggle('active', Number(s.dataset.step) === 5));
-      const msg = (err && (err.text || err.message)) || 'Something went wrong. Please try again.';
-      showError(msg);
+      showError(err.message || 'Something went wrong. Please try again.');
     }
   });
 
