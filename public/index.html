@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Trilegal | DPDPA Compliance Assessment Tool</title>
+<!-- EmailJS: sends the email straight from the browser (works on GitHub Pages) -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="config.js"></script>
 <style>
   :root {
     --navy: #1b3a6b;
@@ -177,14 +180,14 @@
 <div class="wrap">
 
   <header class="topbar">
-    <img src="/trilegal-logo.svg" alt="Trilegal" />
+    <img src="trilegal-logo.svg" alt="Trilegal" />
   </header>
 
   <!-- INTRO / LANDING -->
   <section id="intro" class="intro">
     <h1 class="intro-title">DPDPA Compliance Assessment Tool</h1>
     <hr class="intro-rule" />
-    <img class="hero" src="/hero.svg" alt="Digital data protection" />
+    <img class="hero" src="hero.svg" alt="Digital data protection" />
     <p>The Digital Personal Data Protection Act, 2023 (DPDPA), is expected to revamp how organizations collect, use, store, and manage personal data in India. For many businesses, one of the most difficult questions is where to begin.</p>
     <p>Trilegal's DPDPA Compliance Assessment Tool is designed to help you take that first step. With 3-5 short answers, you will receive a customized, high-level compliance roadmap to help you identify the nature and likely extent of your obligations under the DPDPA.</p>
     <p>This roadmap is useful for organizations at all stages of their compliance journey and helps assess the potential impact of the DPDPA on their operations or provides a practical starting point for internal discussions.</p>
@@ -347,37 +350,66 @@
     });
   });
 
+  // Turn the answers into a plain-English summary (mirrors the old server logic)
+  function buildProfile() {
+    const q2 = getRadio('q2');
+    const q3 = getRadio('q3');
+    const q4 = getChecks('q4');
+
+    const role = q2 === 'behalf' ? 'Data Processor' : 'Data Fiduciary';
+    const dataType = q3 === 'customers'
+      ? 'External-facing (interface with individual customers; B2C).'
+      : 'Internal-facing (employees, contractors, vendors, visitors).';
+
+    const considerations = [];
+    if (q4.includes('children')) considerations.push('Processing of personal data of children or persons with disabilities');
+    if (q4.includes('cross_border')) considerations.push('Transfer of personal data outside India');
+    if (q4.includes('large_volume')) considerations.push('Large-volume / sensitive / higher-risk processing');
+    if (considerations.length === 0) considerations.push('No additional risk factors flagged');
+
+    return { role, dataType, considerations: considerations.join('; ') + '.' };
+  }
+
   submitBtn.addEventListener('click', async () => {
     if (!validateStep(5)) return;
 
-    const payload = {
-      q1: getRadio('q1'),
-      q2: getRadio('q2'),
-      q3: getRadio('q3'),
-      q4: getChecks('q4'),
-      q5: document.getElementById('q5').value.trim(),
-    };
+    const email = document.getElementById('q5').value.trim();
+    const profile = buildProfile();
 
     // Switch to sending screen
     document.getElementById('footer').style.display = 'none';
     steps.forEach(s => s.classList.remove('active'));
     document.getElementById('done').classList.add('show');
 
+    const cfg = window.EMAILJS_CONFIG || {};
+    const configured = cfg.publicKey && !cfg.publicKey.startsWith('YOUR_');
+
     try {
-      const res = await fetch('/api/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Submission failed.');
+      if (!configured) {
+        throw new Error('Email sending is not configured yet (EmailJS keys missing in config.js).');
+      }
+
+      // Absolute link to the roadmap PDF hosted alongside this page
+      const pdfLink = new URL('DPDPA-Compliance-Roadmap.pdf', window.location.href).href;
+
+      const params = {
+        to_email: email,
+        summary_role: profile.role,
+        summary_data_type: profile.dataType,
+        summary_considerations: profile.considerations,
+        pdf_link: pdfLink,
+      };
+
+      await emailjs.send(cfg.serviceId, cfg.templateId, params, { publicKey: cfg.publicKey });
+
       document.getElementById('sending').style.display = 'none';
       document.getElementById('success').style.display = 'block';
     } catch (err) {
       document.getElementById('done').classList.remove('show');
       document.getElementById('footer').style.display = 'flex';
       steps.forEach(s => s.classList.toggle('active', Number(s.dataset.step) === 5));
-      showError(err.message || 'Something went wrong. Please try again.');
+      const msg = (err && (err.text || err.message)) || 'Something went wrong. Please try again.';
+      showError(msg);
     }
   });
 

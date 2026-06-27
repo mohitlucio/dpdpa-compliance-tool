@@ -1,112 +1,74 @@
 # DPDPA Compliance Assessment Tool
 
-A working web tool modelled on Trilegal's DPDPA Compliance Assessment Tool.
-A visitor reads a short intro, answers a 5-page questionnaire, and on submit is
-**automatically emailed** a DPDPA Compliance Roadmap PDF with a Trilegal-branded
-cover note.
+A web tool modelled on Trilegal's DPDPA Compliance Assessment Tool. A visitor reads a
+short intro, answers a 5-page questionnaire, enters their email, and is **automatically
+emailed** a DPDPA Compliance Roadmap (with a Trilegal-branded cover note).
+
+**Live site (GitHub Pages):** https://mohitlucio.github.io/dpdpa-compliance-tool/
 
 ---
 
 ## 1. What it does
+1. Landing page → "Take the Assessment".
+2. 5 questions (Q1 in-scope? · Q2 fiduciary/processor · Q3 customers/employees · Q4 extra
+   considerations · Q5 email).
+3. On submit, the email entered receives a tailored summary + a link to the roadmap PDF.
 
-1. **Landing page** — title, hero graphic, intro copy, and a "Take the Assessment" button.
-2. **5-step questionnaire** (matches the original questions, with a progress bar and
-   Back/Next/Submit):
-   - Q1 — Do you process personal data in India / offer goods to people in India? (Yes/No)
-   - Q2 — Why do you process data? (own use → *Data Fiduciary* / on behalf → *Data Processor*)
-   - Q3 — Whose data? (customers → *B2C / external-facing* / employees → *internal*)
-   - Q4 — Additional considerations (children, cross-border, large/sensitive volume, none)
-   - Q5 — Email address
-3. **On submit** the email entered on page 5 receives:
-   - the **roadmap PDF** (`assets/DPDPA-Compliance-Roadmap.pdf`) as an attachment, and
-   - the exact Trilegal cover note + confidentiality + disclaimer text, plus a short
-     **snapshot** tailored to the answers (role, data type, considerations).
-4. Every submission is appended to `submissions.log` (local runs only).
+## 2. Two ways it can run
 
-## 2. Tech stack
+### A) Static site on GitHub Pages + EmailJS  ← this is what's hosted live
+GitHub Pages only serves static files, so the email is sent **from the browser** using
+[EmailJS](https://www.emailjs.com) (a service designed for static sites; its public key is
+safe to expose). The roadmap PDF is hosted on the Pages site and the email links to it.
 
-- **Frontend:** a single static page, `public/index.html` (no framework). Times New Roman,
-  Trilegal navy palette. Logo and hero are inline SVGs (`public/trilegal-logo.svg`,
-  `public/hero.svg`).
-- **Backend:** Node.js + Express (`server.js`). One endpoint, `POST /api/submit`, validates
-  the email, builds the message, and sends it with **Nodemailer** over SMTP.
-- **Email:** Gmail SMTP (configurable to any provider via environment variables).
+- Frontend: `public/index.html` (HTML + CSS + vanilla JS).
+- Email: `emailjs.send(...)` configured by `public/config.js`.
+- Deploy: GitHub Actions workflow `.github/workflows/deploy-pages.yml` publishes `public/`.
 
-## 3. Project structure
+**Setup (one time):**
+1. Create a free account at https://dashboard.emailjs.com
+2. **Email Services** → add **Gmail** → connect your Gmail account.
+3. **Email Templates** → create a template (see variables below). Set its **To Email** to
+   `{{to_email}}`.
+4. Copy your **Service ID**, **Template ID**, and **Public Key** into `public/config.js`.
+5. Commit & push — GitHub Actions redeploys automatically.
 
-```
-dpdpa-tool/
-├─ server.js               # Express server + email logic
-├─ package.json
-├─ render.yaml             # one-click deploy config for Render
-├─ .env.example            # template for credentials (copy to .env)
-├─ .env                    # YOUR real credentials — git-ignored, never committed
-├─ assets/
-│  └─ DPDPA-Compliance-Roadmap.pdf   # the PDF that gets emailed
-└─ public/
-   ├─ index.html           # landing page + questionnaire
-   ├─ trilegal-logo.svg
-   └─ hero.svg
-```
+Template variables passed by the app: `{{to_email}}`, `{{summary_role}}`,
+`{{summary_data_type}}`, `{{summary_considerations}}`, `{{pdf_link}}`.
 
-## 4. Run locally
+### B) Self-hosted Node server (real Gmail attachment)
+`server.js` (Express + Nodemailer) sends via Gmail SMTP and attaches the PDF directly.
+Use this if you want the PDF as a true attachment rather than a link.
 
 ```bash
-cd dpdpa-tool
 npm install
-cp .env.example .env          # then edit .env with your real values
-npm start
+cp .env.example .env     # fill in SMTP_USER, SMTP_PASS (Gmail App Password), FROM_EMAIL
+npm start                # http://localhost:3000
 ```
-Open http://localhost:3000
+Deploy this version on a Node host (e.g. Render — see `render.yaml`). Not GitHub Pages.
 
-### Email settings (.env)
-| Variable      | Meaning                                            |
-|---------------|----------------------------------------------------|
-| `SMTP_HOST`   | `smtp.gmail.com` for Gmail                          |
-| `SMTP_PORT`   | `465`                                               |
-| `SMTP_SECURE` | `true`                                              |
-| `SMTP_USER`   | the sending Gmail address                           |
-| `SMTP_PASS`   | a Gmail **App Password** (not your login password)  |
-| `FROM_NAME`   | display name recipients see (e.g. `Trilegal`)       |
-| `FROM_EMAIL`  | the from address (same as `SMTP_USER` for Gmail)    |
-| `BCC_EMAIL`   | optional — get a copy of every submission           |
+## 3. Project structure
+```
+dpdpa-tool/
+├─ public/                         # the static site (what GitHub Pages serves)
+│  ├─ index.html                   # landing page + questionnaire + EmailJS send
+│  ├─ config.js                    # EmailJS keys (public, safe)
+│  ├─ trilegal-logo.svg / hero.svg
+│  └─ DPDPA-Compliance-Roadmap.pdf # emailed roadmap (linked from the email)
+├─ server.js                       # optional Node backend (attachment version)
+├─ assets/DPDPA-Compliance-Roadmap.pdf
+├─ render.yaml                     # deploy config for the Node version
+├─ .github/workflows/deploy-pages.yml
+└─ .env / .env.example             # credentials for the Node version (git-ignored)
+```
 
-> Gmail App Password: enable 2-Step Verification, then create one at
-> https://myaccount.google.com/apppasswords
+## 4. Customising
+- **Change the roadmap:** replace `public/DPDPA-Compliance-Roadmap.pdf` (and `assets/...`).
+- **Change email wording:** edit the EmailJS template (version A) or `buildEmail()` in
+  `server.js` (version B).
+- **Sender name:** EmailJS template "From Name" (A) or `FROM_NAME` (B).
 
-## 5. Deploy online (Render)
-
-This app needs a server (to send email), so it can't run on GitHub Pages.
-It ships with `render.yaml` for a free Render web service.
-
-1. Push this repo to GitHub (already done if you're reading this on GitHub).
-2. Go to https://dashboard.render.com → **New** → **Blueprint**.
-3. Connect your GitHub and select this repository. Render reads `render.yaml`.
-4. When prompted, fill in the secret env vars:
-   - `SMTP_USER` = your Gmail address
-   - `SMTP_PASS` = your Gmail App Password
-   - `FROM_EMAIL` = your Gmail address
-   - `BCC_EMAIL` = (optional)
-5. Click **Apply**. Render builds and gives you a public URL like
-   `https://dpdpa-compliance-tool.onrender.com`.
-
-Notes:
-- The free tier sleeps after ~15 min idle; the first request after that takes a few
-  seconds to wake.
-- The filesystem is ephemeral on Render, so `submissions.log` won't persist there. Set
-  `BCC_EMAIL` if you want a durable copy of each lead.
-
-## 6. Customising
-
-- **Change the emailed PDF:** replace `assets/DPDPA-Compliance-Roadmap.pdf`.
-- **Change the email wording:** edit `buildEmail()` in `server.js`.
-- **Different PDFs per answer combination:** extend the `/api/submit` handler in
-  `server.js` to pick a file based on `answers`.
-- **Sender display name:** change `FROM_NAME`.
-
-## 7. Notes & disclaimers
-
-- This is a demonstration/clone built for the owner of this repo. "Trilegal" and the
-  bundled roadmap PDF are the property of Trilegal; do not distribute publicly without
-  authorisation.
+## 5. Notes
+- "Trilegal" and the bundled roadmap PDF are the property of Trilegal; this is a
+  demonstration clone.
 - The roadmap is informational only and is **not legal advice**.
