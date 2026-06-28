@@ -13,7 +13,7 @@
 
 ---
 
-## ✨ Overview
+## Overview
 
 The DPDPA, 2023 changes how organisations in India collect, use, store and manage personal
 data. For many businesses the hardest question is simply *where to begin*.
@@ -29,7 +29,7 @@ This tool answers that. A visitor:
 It’s useful for organisations at any stage of their compliance journey, or as a practical
 starting point for internal discussions.
 
-## 🖥️ Features
+## Features
 
 - Clean, branded landing page (Trilegal logo + hero) in a Times New Roman theme.
 - 5-step questionnaire with a progress bar, Back/Next/Submit, and input validation.
@@ -38,7 +38,7 @@ starting point for internal discussions.
 - The email body is **tailored to the answers** (primary DPDPA role, data type, risk factors).
 - Every submission is logged for the operator’s records.
 
-## 🧠 How it works
+## How it works
 
 A classic two-part web app: a static frontend the visitor sees, and a small backend that
 performs the one privileged action — sending the email.
@@ -64,7 +64,7 @@ performs the one privileged action — sending the email.
 - **Credentials** are never hard-coded — they’re read from environment variables, so nothing
   secret is ever committed to this repository.
 
-## 🛠️ Tech stack
+## Tech stack
 
 | Layer    | Technology |
 |----------|------------|
@@ -73,7 +73,7 @@ performs the one privileged action — sending the email.
 | Email    | Nodemailer over Gmail SMTP |
 | Hosting  | [Render](https://render.com) (free Node web service) |
 
-## 📁 Project structure
+## Project structure
 
 ```
 dpdpa-tool/
@@ -90,7 +90,7 @@ dpdpa-tool/
    └─ DPDPA-Compliance-Roadmap.pdf
 ```
 
-## 🚀 Run locally
+## Run locally
 
 ```bash
 git clone https://github.com/mohitlucio/dpdpa-compliance-tool.git
@@ -121,7 +121,7 @@ npm start                   # open http://localhost:3000
 > work there. Set `BREVO_API_KEY` instead — the app then sends over Brevo's HTTPS API, still
 > from `FROM_EMAIL` with the PDF attached. Verify `FROM_EMAIL` as a sender in Brevo first.
 
-## ☁️ Deployment (Render)
+## Deployment (Render)
 
 The live app runs on Render as a free Node web service:
 **<https://dpdpa-compliance-tool.onrender.com>**
@@ -138,14 +138,14 @@ To deploy your own copy:
 > **Note on the free tier:** the service sleeps after ~15 minutes of inactivity, so the first
 > request after idle takes ~30 seconds to wake up, then it’s fast.
 
-## 🔧 Customising
+## Customising
 
 - **Change the emailed PDF:** replace the file in `assets/` (and `public/`).
 - **Change the email wording:** edit `buildEmail()` in `server.js`.
 - **Different PDFs per answer combination:** extend the `/api/submit` handler in `server.js`.
 - **Sender display name:** change `FROM_NAME`.
 
-## ⚖️ Disclaimer
+## ⚖️isclaimer
 
 “Trilegal” and the bundled roadmap PDF are the property of Trilegal; this is a demonstration
 project. The roadmap is for general informational purposes only and **does not constitute
