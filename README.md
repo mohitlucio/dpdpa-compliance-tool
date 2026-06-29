@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-   <b>Live app:</b> <a href="https://dpdpa-compliance-tool.onrender.com">https://dpdpa-compliance-tool.onrender.com</a>
+   <b>Live website:</b> <a href="https://dpdpa-compliance-tool.onrender.com">https://dpdpa-compliance-tool.onrender.com</a>
 </p>
 
 ---
